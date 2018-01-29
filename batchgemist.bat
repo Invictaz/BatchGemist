@@ -4731,7 +4731,7 @@ IF DEFINED duration (
 )
 
 ECHO.
-ECHO   1. Audio/video-url weergeven.
+ECHO   1. Audio/video-url openen met Movian.
 ECHO   2. Audio/video downloaden.
 IF EXIST %mpc% (
 	ECHO   3. Audio/video openen met MPC-HC/BE.
