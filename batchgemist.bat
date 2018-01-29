@@ -201,7 +201,7 @@ IF DEFINED check (
 	GOTO Help
 )
 
-SET "user-agent=Mozilla/5.0 ^(compatible; Xidel^)"
+SET "user-agent=Mozilla/5.0 Firefox/58.0"
 GOTO Input
 
 REM ================================================================================================
@@ -434,6 +434,7 @@ IF NOT "%url: =%"=="%url%" (
 	                  .^,
 	                  'Video:.+^, ^(\d+x\d+^)'^,
 	                  1
+<<<<<<< HEAD
 	                ^)^,
 	                'vbitrate':replace^(
 	                  .^,
@@ -467,6 +468,55 @@ IF NOT "%url: =%"=="%url%" (
 	                      '^(\d+^)-^(\d+^)-^(\d+^).+'^,
 	                      ' ^($3$2$1^)'
 	                    ^)
+=======
+	                ^) count $i
+	                let $a:^=if ^(
+	                  contains^(
+	                    $x/@src^,
+	                    'ipv4-api'
+	                  ^)
+	                ^) then
+	                  x:request^(
+	                    {
+	                      'data':$x/@src^,
+	                      'method':'HEAD'
+	                    }
+	                  ^)/url
+	                else
+	                  $x/@src
+	                return
+	                system^(
+	                  x'cmd /c %ffmpeg% -i {$a} 2^>^&amp^;1'
+	                ^) ! {
+	                  'format':'mp4-'^|^|$i^,
+	                  'extension':'mp4'^,
+	                  'duration':format-time^(
+	                    time^(
+	                      extract^(
+	                        .^,
+	                        'Duration: ^(.+?^)^,'^,
+	                        1
+	                      ^)
+	                    ^) + duration^('PT0.5S'^)^,
+	                    '[H01]:[m01]:[s01]'
+	                  ^)^,
+	                  'resolution':extract^(
+	                    .^,
+	                    'Video:.+^, ^(\d+x\d+^)'^,
+	                    1
+	                  ^)^,
+	                  'vbitrate':replace^(
+	                    .^,
+	                    '.+Video:.+?^(\d+^) kb.+'^,
+	                    'v:$1k'^,
+	                    's'
+	                  ^)^,
+	                  'abitrate':replace^(
+	                    .^,
+	                    '.+Audio:.+?^(\d+^) kb.+'^,
+	                    'a:$1k'^,
+	                    's'
+>>>>>>> upstream/master
 	                  ^)^,
 	                  'formats':local:extract^(//source^)
 	                }
@@ -2164,62 +2214,116 @@ IF NOT "%url: =%"=="%url%" (
 	          ^)^" --output-encoding^=oem --output-format^=cmd^"') DO %%A
 ) ELSE IF NOT "%url:www.telegraaf.nl=%"=="%url%" (
 	FOR /F "delims=" %%A IN ('^"%xidel% "%url%"
-	-e ^"name:^=concat(
-	      'Telegraaf - '^,
-	      //h2^,
-	      replace(
-	        //script/extract(
+	-f ^"concat^(
+	      'https://content.tmgvideo.nl/playlist/item^='^,
+	      json^(
+	        //script/extract^(
 	          .^,
-	          'getPubDate.+?(\d+^)'^,1^,'s'
-	        ^)[.]^,
-	        '(\d{4}^)(\d{2}^)(\d{2}^)'^,
-	        ' ($3$2$1^)'
-	      ^)
+	          'APOLLO_STATE__^=^(.+^)^;'^,
+	          1
+	        ^)[.]
+	      ^)/^(.//videoId^)[1]^,
+	      '/playlist.json'
 	    ^)^"
-	-f ^"//iframe/@src^"
-	-f ^"//script/extract(
-	      .^,
-	      'playlist: \^"(.+^^^)\^"'^,1
-	    ^)[.]^"
-	--xquery ^"json:^=$json//locations/[
-	            let $a:^=(adaptive^)(2^)/src return (
-	              {
-	                'format':'meta'^,
-	                'url':$a
-	              }^,
-	              tail(
-	                tokenize(
-	                  unparsed-text($a^)^,
-	                  '#EXT-X-STREAM-INF:'
-	                ^)
-	              ^) ! {
-	                'format':string(
-	                  extract(
-	                    .^,
-	                    'BANDWIDTH^=(\d+^)'^,1
-	                  ^) idiv 1000
-	                ^)^,
-	                'url':concat(
-	                  resolve-uri('.'^,$a^)^,
-	                  extract(
-	                    .^,
-	                    '(.+m3u8^)'^,1
-	                  ^)
-	                ^)
-	              }
+	--xquery ^"$json/^(items^)^(^)/^(
+	            name:^=concat^(
+	              'Telegraaf: '^,
+	              title^,
+	              replace^(
+	                datecreated^,
+	                '^(\d+^)-^(\d+^)-^(\d+^).+'^,
+	                ' ^($3$2$1^)'
+	              ^)
 	            ^)^,
-	            (progressive^)(^)/{
-	              'format':concat('mp4-'^,height^)^,
-	              'url':.//src
-	            }
-	          ]^,
-	          let $b:^=(
-	            for $x in $json(^)[contains(format^,'mp4'^)]/format order by $x return $x^,
-	            $json(^)[format^='meta']/format^,
-	            for $x in $json(^)[format castable as int]/format order by $x return $x
-	          ^) return (
-	            formats:^=join($b^,'^, '^)^,
-	            best:^=$b[last(^)]
+	            t:^=duration^,
+	            duration:^=$t * dayTimeDuration^('PT1S'^) + time^('00:00:00'^)^,
+	            formats:^=locations/[
+	              for $x at $i in reverse^(
+	                ^(progressive^)^(^)
+	              ^)//src return
+	              system^(
+	                x'cmd /c %ffmpeg% -i {$x} 2^>^&amp^;1'
+	              ^) ! {
+	                'format':'mp4-'^|^|$i^,
+	                'extension':'mp4'^,
+	                'resolution':extract^(
+	                  .^,
+	                  'Video:.+^, ^(\d+x\d+^)'^,
+	                  1
+	                ^)^,
+	                'vbitrate':replace^(
+	                  .^,
+	                  '.+Video:.+?^(\d+^) kb.+'^,
+	                  'v:$1k'^,
+	                  's'
+	                ^)^,
+	                'abitrate':replace^(
+	                  .^,
+	                  '.+Audio:.+?^(\d+^) kb.+'^,
+	                  'a:$1k'^,
+	                  's'
+	                ^)^,
+	                'url':$x
+	              }^,
+	              let $a:^=^(adaptive^)^(^)[ends-with^(src^,'m3u8'^)]/src return ^(
+	                {
+	                  'format':'hls-0'^,
+	                  'extension':'m3u8'^,
+	                  'url':$a
+	                }^,
+	                for $x at $i in tail^(
+	                  tokenize^(
+	                    extract^(
+	                      unparsed-text^($a^)^,
+	                      '^(#EXT-X-STREAM-INF.+m3u8$^)'^,
+	                      1^,'ms'
+	                    ^)^,
+	                    '#EXT-X-STREAM-INF:'
+	                  ^)
+	                ^) order by extract^(
+	                  $x^,
+	                  'BANDWIDTH^=^(\d+^)'^,
+	                  1
+	                ^) count $i return
+	                {
+	                  'format':'hls-'^|^|$i^,
+	                  'extension':'m3u8'^,
+	                  'resolution':extract^(
+	                    $x^,
+	                    'RESOLUTION^=^([\dx]+^)'^,
+	                    1
+	                  ^)^,
+	                  'vbitrate':extract^(
+	                    $x^,
+	                    'video^=^(\d+^)\d{3}'^,
+	                    1
+	                  ^) ! ^(
+	                    if ^(.^) then
+	                      concat^(
+	                        'v:'^,
+	                        .^,
+	                        'k'
+	                      ^)
+	                    else
+	                      ''
+	                  ^)^,
+	                  'abitrate':replace^(
+	                    $x^,
+	                    '.+audio.+?^(\d+^)\d{3}.+'^,
+	                    'a:$1k'^,
+	                    's'
+	                  ^)^,
+	                  'url':resolve-uri^(
+	                    '.'^,
+	                    $a
+	                  ^)^|^|extract^(
+	                    $x^,
+	                    '^(.+m3u8^)'^,
+	                    1
+	                  ^)
+	                }
+	              ^)
+	            ]
 	          ^)^" --output-encoding^=oem --output-format^=cmd^"') DO %%A
 ) ELSE IF NOT "%url:vtm.be=%"=="%url%" (
 	FOR /F "delims=" %%A IN ('^"%xidel% "%url%"
@@ -2533,7 +2637,7 @@ IF NOT "%url: =%"=="%url%" (
 	            best:^=$a[last(^)]
 	          ^)^" --output-encoding^=oem --output-format^=cmd^"') DO %%A
 ) ELSE IF NOT "%url:24kitchen.nl=%"=="%url%" (
-	FOR /F "delims=" %%A IN ('^"%xidel% -H "Cookie: AcceptCookies=1" --user-agent "Mozilla/5.0 Firefox/57.0" "%url%"
+	FOR /F "delims=" %%A IN ('^"%xidel% -H "Cookie: AcceptCookies=1" --user-agent "%user-agent%" "%url%"
 	-e ^"json^(
 	      //script/extract^(
 	        .^,
@@ -2569,6 +2673,19 @@ IF NOT "%url: =%"=="%url%" (
 	      ^) ! {
 	        'format':'mp4-1'^,
 	        'extension':'mp4'^,
+<<<<<<< HEAD
+=======
+	        'duration':format-time^(
+	          time^(
+	            extract^(
+	              .^,
+	              'Duration: ^(.+?^)^,'^,
+	              1
+	            ^)
+	          ^) + duration^('PT0.5S'^)^,
+	          '[H01]:[m01]:[s01]'
+	        ^)^,
+>>>>>>> upstream/master
 	        'resolution':extract^(
 	          .^,
 	          'Video:.+^, ^(\d+x\d+^)'^,
@@ -2680,6 +2797,19 @@ IF NOT "%url: =%"=="%url%" (
 	                      $i
 	                    ^)^,
 	                    'extension':$a^,
+<<<<<<< HEAD
+=======
+	                    'duration':format-time^(
+	                      time^(
+	                        extract^(
+	                          .^,
+	                          'Duration: ^(.+?^)^,'^,
+	                          1
+	                        ^)
+	                      ^) + duration^('PT0.5S'^)^,
+	                      '[H01]:[m01]:[s01]'
+	                    ^)^,
+>>>>>>> upstream/master
 	                    'resolution':extract^(
 	                      .^,
 	                      'Video:.+^, ^(\d+x\d+^)'^,
@@ -3052,6 +3182,7 @@ IF NOT "%url: =%"=="%url%" (
 	            'mp4-'^,
 	            position(^)
 	          ^)^,
+<<<<<<< HEAD
 	          'url':.
 	        }
 	    ] return (
@@ -3105,6 +3236,30 @@ IF NOT "%url: =%"=="%url%" (
 	                  '$1-'
 	                ^)^,
 	                position(^)
+=======
+	          formats:^=[
+	            for $x at $i in //script/reverse^(
+	              extract^(
+	                .^,
+	                'myfile ^= ''^(.+^)'''^,
+	                1^,'*'
+	              ^)[.]
+	            ^) return
+	            system^(
+	              x'cmd /c %ffmpeg% -i {$x} 2^>^&amp^;1'
+	            ^) ! {
+	              'format':'mp4-'^|^|$i^,
+	              'extension':'mp4'^,
+	              'duration':format-time^(
+	                time^(
+	                  extract^(
+	                    .^,
+	                    'Duration: ^(.+?^)^,'^,
+	                    1
+	                  ^)
+	                ^) + duration^('PT0.5S'^)^,
+	                '[H01]:[m01]:[s01]'
+>>>>>>> upstream/master
 	              ^)^,
 	              'url':.
 	            }
@@ -3155,6 +3310,7 @@ IF NOT "%url: =%"=="%url%" (
 	                  src^,
 	                  'm3u8'
 	                ^)
+<<<<<<< HEAD
 	              ]/src return ^(
 	                {
 	                  'format':'hls-0'^,
@@ -3179,6 +3335,28 @@ IF NOT "%url: =%"=="%url%" (
 	                {
 	                  'format':'hls-'^|^|$i^,
 	                  'extension':'m3u8'^,
+=======
+	                return
+	                system^(
+	                  x'cmd /c %ffmpeg% -i {$x} 2^>^&amp^;1'
+	                ^) ! {
+	                  'format':concat^(
+	                    $a^,
+	                    '-'^,
+	                    $i
+	                  ^)^,
+	                  'extension':$a^,
+	                  'duration':format-time^(
+	                    time^(
+	                      extract^(
+	                        .^,
+	                        'Duration: ^(.+?^)^,'^,
+	                        1
+	                      ^)
+	                    ^) + duration^('PT0.5S'^)^,
+	                    '[H01]:[m01]:[s01]'
+	                  ^)^,
+>>>>>>> upstream/master
 	                  'resolution':extract^(
 	                    $x^,
 	                    'RESOLUTION^=^([\dx]+^)'^,
@@ -3588,6 +3766,19 @@ FOR /F "delims=" %%A IN ('^"%xidel% "http://e.omroep.nl/metadata/%prid%"
                     '.+\.^(.+^)'^,
                     1
                   ^)^,
+<<<<<<< HEAD
+=======
+                  'duration':format-time^(
+                    time^(
+                      extract^(
+                        .^,
+                        'Duration: ^(.+?^)^,'^,
+                        1
+                      ^)
+                    ^) + duration^('PT0.5S'^)^,
+                   '[H01]:[m01]:[s01]'
+                  ^)^,
+>>>>>>> upstream/master
                   'resolution':extract^(
                     .^,
                     'Video:.+^, ^(\d+x\d+^)'^,
@@ -4772,33 +4963,34 @@ IF DEFINED ss (
 ECHO.
 ECHO Audio- of video-url:
 ECHO %v_url%
-FOR /F "delims=" %%A IN ('^"%xidel%  
-      -e ^"replace^(
-      replace^(
-        '%name%'^,
-        ':'^,
-        '-'
-      ^)^,
-      '\^^'^,
-      ''
-    ^)^" --output-encoding^=oem^"') DO SET "name=%%A"  
+<<<<<<< HEAD
 SETLOCAL ENABLEDELAYEDEXPANSION
 IF DEFINED s_url (
 	ECHO.
 	SET /P "subs=Inclusief ondertiteling? [j/N] "
 	IF /I "!subs!"=="j" (
 		IF DEFINED ss1 (
-			%ffmpeg% -hide_banner -ss %ss1% -i %s_url% -ss %ss2% -t %t% "%name%.srt"
+			%ffmpeg% -hide_banner -ss %ss1% -i %s_url% -ss %ss2% -t %t% ondertiteling.srt
 		) ELSE IF DEFINED ss2 (
-			%ffmpeg% -hide_banner -i %s_url% -ss %ss2% -t %t% "%name%.srt"
+			%ffmpeg% -hide_banner -i %s_url% -ss %ss2% -t %t% ondertiteling.srt
 		) ELSE (
-			%ffmpeg% -hide_banner -i %s_url% "%name%.srt"
+			%ffmpeg% -hide_banner -i %s_url% ondertiteling.srt
 		)
 	)
 )
 START "" http://192.168.178.33:42000/api/open?url=%v_url%
 ECHO.
 ECHO Movian wordt gestart met de video url
+=======
+ECHO|SET /P ="%v_url:^=%"|clip.exe
+IF DEFINED s_url (
+	ECHO.
+	ECHO Ondertiteling-url:
+	ECHO %s_url%
+)
+ECHO.
+ECHO Audio- of video-url gekopieerd naar het klembord.
+>>>>>>> upstream/master
 ECHO.
 ECHO.
 ENDLOCAL
